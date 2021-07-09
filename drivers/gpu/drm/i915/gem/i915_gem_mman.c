@@ -854,7 +854,9 @@ static struct file *mmap_singleton(struct drm_i915_private *i915)
 		return file;
 
 	/* Everyone shares a single global address space */
+#ifdef __linux__
 	file->f_mapping = i915->drm.anon_inode->i_mapping;
+#endif
 
 	smp_store_mb(i915->gem.mmap_singleton, file);
 	drm_dev_get(&i915->drm);
