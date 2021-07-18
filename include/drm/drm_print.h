@@ -525,6 +525,8 @@ void drm_err(const char *function_name, const char *format, ...);
 	__drm_printk((drm), err, _ratelimited, "*ERROR* " fmt, ##__VA_ARGS__)
 
 
+#ifdef __linux__
+
 #define drm_dbg_core(drm, fmt, ...)					\
 	drm_dev_dbg((drm)->dev, DRM_UT_CORE, fmt, ##__VA_ARGS__)
 #define drm_dbg(drm, fmt, ...)						\
@@ -544,6 +546,28 @@ void drm_err(const char *function_name, const char *format, ...);
 #define drm_dbg_dp(drm, fmt, ...)					\
 	drm_dev_dbg((drm)->dev, DRM_UT_DP, fmt, ##__VA_ARGS__)
 
+#else
+
+#define drm_dbg_core(drm, fmt, ...)					\
+	drm_dev_dbg((drm)->dev, DRM_UT_CORE, __func__, fmt, ##__VA_ARGS__)
+#define drm_dbg(drm, fmt, ...)						\
+	drm_dev_dbg((drm)->dev, DRM_UT_DRIVER, __func__, fmt, ##__VA_ARGS__)
+#define drm_dbg_kms(drm, fmt, ...)					\
+	drm_dev_dbg((drm)->dev, DRM_UT_KMS, __func__, fmt, ##__VA_ARGS__)
+#define drm_dbg_prime(drm, fmt, ...)					\
+	drm_dev_dbg((drm)->dev, DRM_UT_PRIME, __func__, fmt, ##__VA_ARGS__)
+#define drm_dbg_atomic(drm, fmt, ...)					\
+	drm_dev_dbg((drm)->dev, DRM_UT_ATOMIC, __func__, fmt, ##__VA_ARGS__)
+#define drm_dbg_vbl(drm, fmt, ...)					\
+	drm_dev_dbg((drm)->dev, DRM_UT_VBL, __func__, fmt, ##__VA_ARGS__)
+#define drm_dbg_state(drm, fmt, ...)					\
+	drm_dev_dbg((drm)->dev, DRM_UT_STATE, __func__, fmt, ##__VA_ARGS__)
+#define drm_dbg_lease(drm, fmt, ...)					\
+	drm_dev_dbg((drm)->dev, DRM_UT_LEASE, __func__, fmt, ##__VA_ARGS__)
+#define drm_dbg_dp(drm, fmt, ...)					\
+	drm_dev_dbg((drm)->dev, DRM_UT_DP, __func__, fmt, ##__VA_ARGS__)
+
+#endif
 
 /*
  * printk based logging
