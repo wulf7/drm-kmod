@@ -1063,7 +1063,10 @@ static int __init i915_init(void)
 	if (err)
 		return err;
 
+#ifdef __linux__
 	i915_perf_sysctl_register();
+#endif
+
 	return 0;
 }
 
