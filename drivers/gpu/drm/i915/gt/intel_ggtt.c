@@ -15,6 +15,12 @@
 
 #include "intel_gtt.h"
 
+#ifdef __FreeBSD__
+#include <asm/mtrr.h>
+#include <dev/agp/agp_i810.h>
+#include <drm/drm_agpsupport.h>
+#endif
+
 static int
 i915_get_ggtt_vma_pages(struct i915_vma *vma);
 
@@ -416,8 +422,13 @@ static void i915_ggtt_insert_entries(struct i915_address_space *vm,
 	unsigned int flags = (cache_level == I915_CACHE_NONE) ?
 		AGP_USER_MEMORY : AGP_USER_CACHED_MEMORY;
 
+#ifdef __linux__
 	intel_gtt_insert_sg_entries(vma->pages, vma->node.start >> PAGE_SHIFT,
 				    flags);
+#elif defined(__FreeBSD__)
+	linux_intel_gtt_insert_sg_entries(vma->pages,
+	    vma->node.start >> PAGE_SHIFT, flags);
+#endif
 }
 
 static void i915_ggtt_clear_range(struct i915_address_space *vm,
@@ -1063,7 +1074,16 @@ static int i915_gmch_probe(struct i915_ggtt *ggtt)
 		return -EIO;
 	}
 
+#ifdef __linux__
 	intel_gtt_get(&ggtt->vm.total, &gmadr_base, &ggtt->mappable_end);
+#elif defined(__FreeBSD__)
+	struct intel_gtt *gtt;
+
+	gtt = intel_gtt_get();
+	ggtt->vm.total = gtt->gtt_total_entries << PAGE_SHIFT;
+	gmadr_base = gtt->gma_bus_addr;
+	ggtt->mappable_end = gtt->gtt_mappable_entries << PAGE_SHIFT;
+#endif
 
 	ggtt->gmadr =
 		(struct resource)DEFINE_RES_MEM(gmadr_base, ggtt->mappable_end);
