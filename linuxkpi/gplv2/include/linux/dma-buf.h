@@ -119,11 +119,14 @@ struct dma_buf {
 	struct dma_resv *resv;
 
 	/* poll support */
-	wait_queue_head_t poll;
+	struct dma_buf_poll {
+		struct selinfo	si;
+		struct mtx	lock;
+	} poll;
 
 	struct dma_buf_poll_cb_t {
 		struct dma_fence_cb cb;
-		wait_queue_head_t *poll;
+		struct dma_buf_poll *poll;
 
 		unsigned long active;
 	} cb_excl, cb_shared;

@@ -43,6 +43,7 @@ __FBSDID("$FreeBSD$");
 #include <sys/filio.h>
 #include <sys/unistd.h>
 #include <sys/capsicum.h>
+#include <sys/poll.h>
 
 #include <vm/vm.h>
 #include <vm/pmap.h>
@@ -116,6 +117,9 @@ dma_buf_close(struct file *fp, struct thread *td)
 
 	if (db->resv == (struct dma_resv *)&db[1])
 		dma_resv_fini(db->resv);
+
+	seldrain(&db->poll.si);
+	mtx_destroy(&db->poll.lock);
 
 	free(db, M_DMABUF);
 	return (0);
@@ -193,14 +197,102 @@ dma_buf_seek(struct file *fp, off_t offset, int whence, struct thread *td)
 	return (0);
 }
 
-static int
-dma_buf_poll(struct file *fp, int events,
-	     struct ucred *active_cred, struct thread *td)
+static void
+dma_buf_poll_cb(struct dma_fence *fence, struct dma_fence_cb *cb)
 {
-	// TODO: implement this when we need it (mostly used for cross-device fence sync)
-	return (ENOTSUP);
+	struct dma_buf_poll_cb_t *dbcb = (struct dma_buf_poll_cb_t *)cb;
+	struct dma_buf *db = container_of(dbcb->poll, struct dma_buf, poll);
+
+	mtx_lock(&dbcb->poll->lock);
+	selwakeup(&dbcb->poll->si);
+	dbcb->active = 0;
+	mtx_unlock(&dbcb->poll->lock);
+	dma_fence_put(fence);
+	dma_buf_put(db);
 }
 
+static bool
+dma_buf_poll_add_cb(struct dma_resv *resv, bool write,
+    struct dma_buf_poll_cb_t *dbcb)
+{
+	struct dma_resv_iter cursor;
+	struct dma_fence *fence;
+	int r;
+
+	dma_resv_for_each_fence(&cursor, resv, write, fence) {
+		dma_fence_get(fence);
+		r = dma_fence_add_callback(fence, &dbcb->cb, dma_buf_poll_cb);
+		if (!r)
+			return (true);
+		dma_fence_put(fence);
+	}
+
+	return (false);
+}
+
+static int
+dma_buf_poll(struct file *fp, int events, struct ucred *active_cred,
+    struct thread *td)
+{
+	struct dma_buf *db;
+	struct dma_resv *ro;
+	struct dma_buf_poll_cb_t *dbcb;
+	int revents;
+
+	MPASS(fp_is_db(fp));
+	db = fp->f_data;
+	MPASS(db != NULL);
+	ro = db->resv;
+
+	revents = events & (POLLIN|POLLOUT);
+	if (revents == 0)
+		return (0);
+
+	dma_resv_lock(ro, NULL);
+	if (revents & POLLOUT) {
+		dbcb = &db->cb_shared;
+
+		mtx_lock(&db->poll.lock);
+		if (dbcb->active)
+			revents &= ~POLLOUT;
+		else
+			dbcb->active = POLLOUT;
+		mtx_unlock(&db->poll.lock);
+
+		if (revents & POLLOUT) {
+			refcount_acquire(&fp->f_count);
+			if (!dma_buf_poll_add_cb(ro, true, dbcb))
+				dma_buf_poll_cb(NULL, &dbcb->cb);
+			else
+				revents &= ~POLLOUT;
+		}
+	}
+
+	if (revents & POLLIN) {
+		dbcb = &db->cb_excl;
+
+		mtx_lock(&db->poll.lock);
+		if (dbcb->active)
+			revents &= ~POLLIN;
+		else
+			dbcb->active = POLLIN;
+		mtx_unlock(&db->poll.lock);
+
+		if (revents & POLLIN) {
+			refcount_acquire(&fp->f_count);
+			if (!dma_buf_poll_add_cb(ro, false, dbcb))
+				dma_buf_poll_cb(NULL, &dbcb->cb);
+			else
+				revents &= ~POLLIN;
+		}
+	}
+	dma_resv_unlock(ro);
+
+	if (revents == 0)
+		selrecord(td, &db->poll.si);
+
+	return (revents);
+}
 
 static int
 dma_buf_begin_cpu_access(struct dma_buf *db, enum dma_data_direction dir)
@@ -447,7 +539,7 @@ dma_buf_export(const struct dma_buf_export_info *exp_info)
 	db->size = exp_info->size;
 	db->exp_name = exp_info->exp_name;
 	db->owner = exp_info->owner;
-	init_waitqueue_head(&db->poll);
+	mtx_init(&db->poll.lock, "dmabuf poll", NULL, MTX_DEF);
 	db->cb_excl.poll = db->cb_shared.poll = &db->poll;
 	db->cb_excl.active = db->cb_shared.active = 0;
 
