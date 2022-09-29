@@ -1253,6 +1253,7 @@ CWARNFLAGS.dmub_srv.c=			-Wno-unused-but-set-variable
 CWARNFLAGS.dmub_srv_stat.c=		-Wno-unused-but-set-variable
 
 # display/dc/dml/
+CWARNFLAGS.dcn32_fpu.c=			-Wno-missing-prototypes
 CWARNFLAGS.display_mode_vba_30.c=	-Wno-unused-but-set-variable
 CWARNFLAGS.display_mode_vba_32.c=	-Wno-enum-conversion -Wno-unused-const-variable
 CWARNFLAGS.display_mode_vba_util_32.c=	-Wno-enum-conversion -Wno-missing-prototypes -Wno-unused-local-typedef
