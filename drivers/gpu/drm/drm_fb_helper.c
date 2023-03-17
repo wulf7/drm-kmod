@@ -1884,9 +1884,7 @@ __drm_fb_helper_initial_config_and_unlock(struct drm_fb_helper *fb_helper,
 		info->flags |= FBINFO_HIDE_SMEM_START;
 
 #ifdef __FreeBSD__
-	struct vt_kms_softc *sc = (struct vt_kms_softc *)info->fbio.fb_priv;
-	if (sc)
-		sc->fb_helper = fb_helper;
+	info->fbio.fb_priv = fb_helper;
 #endif
 
 	/* Need to drop locks to avoid recursive deadlock in
