@@ -18,10 +18,6 @@
 #include "i915_scatterlist.h"
 #include "i915_trace.h"
 
-#if !defined(__FreeBSD_version) || __FreeBSD_version < 1400080
-static inline unsigned long totalram_pages(void) { return physmem; }
-#endif
-
 /*
  * Move pages to appropriate lru and release the pagevec, decrementing the
  * ref count of those pages.
