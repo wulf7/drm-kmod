@@ -1050,7 +1050,7 @@ int amdgpu_bo_init(struct amdgpu_device *adev)
 
 		if (r) {
 			DRM_ERROR("Unable to set WC memtype for the aperture base\n");
-			return r;
+//			return r;
 		}
 
 		/* Add an MTRR for the VRAM */
