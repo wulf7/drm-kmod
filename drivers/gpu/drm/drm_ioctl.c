@@ -150,12 +150,7 @@ static int drm_set_busid(struct drm_device *dev, struct drm_file *file_priv)
 	if (master->unique != NULL)
 		drm_unset_busid(dev, master);
 
-#ifdef __linux__
 	if (dev->dev && dev_is_pci(dev->dev)) {
-#elif defined(__FreeBSD__)
-	// BSDFIXME: Assume it's PCI for now
-	if (dev->dev) {
-#endif
 		ret = drm_pci_set_busid(dev, master);
 		if (ret) {
 			drm_unset_busid(dev, master);
