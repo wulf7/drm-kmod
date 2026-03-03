@@ -10,7 +10,9 @@ KMOD=	linuxkpi_video
 EXPORT_SYMS=    YES
 
 SRCS=	hdmi.c \
-	video_kmod.c
+	linux_fb.c \
+	video_kmod.c \
+	vt_drmfb.c
 
 .if !empty(KCONFIG:MAPERTURE_HELPERS)
 SRCS+= aperture.c
@@ -24,6 +26,9 @@ SRCS+=	bus_if.h \
 	device_if.h \
 	pci_if.h \
 	vnode_if.h \
+	opt_splash.h \
+	opt_syscons.h \
+	opt_teken.h
 
 .include <bsd.kmod.mk>
 
@@ -37,6 +42,7 @@ CFLAGS+=	-I${.CURDIR:H}/linuxkpi/bsd/include
 CFLAGS+=	-I${SYSDIR}/compat/linuxkpi/common/include
 CFLAGS+=	-I${SYSDIR}/compat/linuxkpi/dummy/include
 CFLAGS+=	-I${.CURDIR:H}/include
+CFLAGS+=	-I${SRCDIR}
 
 CFLAGS+= '-DKBUILD_MODNAME="${KMOD}"'
 CFLAGS+= '-DLINUXKPI_PARAM_PREFIX=ttm_' -DDRM_SYSCTL_PARAM_PREFIX=_${KMOD}
