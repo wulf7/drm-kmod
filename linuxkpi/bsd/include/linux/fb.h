@@ -294,13 +294,13 @@ struct linux_fb_info {
 } __aligned(sizeof(long));
 
 #define __FB_DEFAULT_IOMEM_OPS_RDWR \
-	.fb_read	= fb_io_read, \
-	.fb_write	= fb_io_write
+	.fb_read	= linuxkpi_fb_io_read, \
+	.fb_write	= linuxkpi_fb_io_write
 
 #define __FB_DEFAULT_IOMEM_OPS_DRAW \
-	.fb_fillrect	= cfb_fillrect, \
-	.fb_copyarea	= cfb_copyarea, \
-	.fb_imageblit	= cfb_imageblit
+	.fb_fillrect	= linuxkpi_cfb_fillrect, \
+	.fb_copyarea	= linuxkpi_cfb_copyarea, \
+	.fb_imageblit	= linuxkpi_cfb_imageblit
 
 #define __FB_DEFAULT_IOMEM_OPS_MMAP \
 	.fb_mmap	= NULL /* default implementation */
@@ -314,19 +314,19 @@ struct linux_fb_info {
 	static void							\
 	_pfx ## _fillrect(struct linux_fb_info *fi, const struct fb_fillrect *fr) \
 	{								\
-		cfb_fillrect(fi, fr);					\
+		linuxkpi_cfb_fillrect(fi, fr);				\
 		_area(fi, fr->dx, fr->dy, fr->width, fr->height);	\
 	}								\
 	static void							\
 	_pfx ## _copyarea(struct linux_fb_info *fi, const struct fb_copyarea *fca) \
 	{								\
-		cfb_copyarea(fi, fca);					\
+		linuxkpi_cfb_copyarea(fi, fca);				\
 		_area(fi, fca->dx, fca->dy, fca->width, fca->height);	\
 	}								\
 	static void							\
 	_pfx ## _imageblit(struct linux_fb_info *fi, const struct fb_image *img) \
 	{								\
-		cfb_imageblit(fi, img);					\
+		linuxkpi_cfb_imageblit(fi, img);			\
 		_area(fi, img->dx, img->dy, img->width, img->height);	\
 	}
 
@@ -334,8 +334,8 @@ struct linux_fb_info {
 	FB_GEN_DEFAULT_DEFERRED_IOMEM_OPS(__VA_ARGS__)
 
 #define __FB_DEFAULT_DEFERRED_OPS_RDWR(...)	\
-	.fb_read	= fb_io_read,		\
-	.fb_write	= fb_io_write
+	.fb_read	= linuxkpi_fb_io_read,	\
+	.fb_write	= linuxkpi_fb_io_write
 
 #define __FB_DEFAULT_DEFERRED_OPS_DRAW(_pfx)	\
 	.fb_fillrect	= _pfx ## _fillrect,	\
@@ -343,62 +343,56 @@ struct linux_fb_info {
 	.fb_imageblit	= _pfx ## _imageblit
 
 #define __FB_DEFAULT_DEFERRED_OPS_MMAP(...)	\
-	.fb_mmap	= fb_deferred_io_mmap
+	.fb_mmap	= linuxkpi_fb_deferred_io_mmap
 
 #define FB_DEFAULT_DEFERRED_OPS(_pfx)		\
 	__FB_DEFAULT_DEFERRED_OPS_RDWR(),	\
 	__FB_DEFAULT_DEFERRED_OPS_DRAW(_pfx),	\
 	__FB_DEFAULT_DEFERRED_OPS_MMAP()
 
-void cfb_fillrect(struct linux_fb_info *info, const struct fb_fillrect *rect);
-void cfb_copyarea(struct linux_fb_info *info, const struct fb_copyarea *area);
-void cfb_imageblit(struct linux_fb_info *info, const struct fb_image *image);
-ssize_t fb_io_read(struct linux_fb_info *info, char __user *buf,
+void linuxkpi_cfb_fillrect(struct linux_fb_info *info,
+    const struct fb_fillrect *rect);
+#define	cfb_fillrect(...)	linuxkpi_cfb_fillrect(__VA_ARGS__)
+#define	sys_fillrect(...)	linuxkpi_cfb_fillrect(__VA_ARGS__)
+void linuxkpi_cfb_copyarea(struct linux_fb_info *info,
+    const struct fb_copyarea *area);
+#define	cfb_copyarea(...)	linuxkpi_cfb_copyarea(__VA_ARGS__)
+#define	sys_copyarea(...)	linuxkpi_cfb_copyarea(__VA_ARGS__)
+void linuxkpi_cfb_imageblit(struct linux_fb_info *info,
+    const struct fb_image *image);
+#define	cfb_imageblit(...)	linuxkpi_cfb_imageblit(__VA_ARGS__)
+#define	sys_imageblit(...)	linuxkpi_cfb_imageblit(__VA_ARGS__)
+ssize_t linuxkpi_fb_io_read(struct linux_fb_info *info, char __user *buf,
     size_t count, loff_t *ppos);
-ssize_t fb_io_write(struct linux_fb_info *info, const char __user *buf,
+#define	fb_io_read(...)		linuxkpi_fb_io_read(__VA_ARGS__)
+#define	fb_sys_read(...)	linuxkpi_fb_io_read(__VA_ARGS__)
+ssize_t linuxkpi_fb_io_write(struct linux_fb_info *info, const char __user *buf,
     size_t count, loff_t *ppos);
-int fb_deferred_io_mmap(struct linux_fb_info *info,
+#define	fb_io_write(...)	linuxkpi_fb_io_write(__VA_ARGS__)
+#define	fb_sys_write(...)	linuxkpi_fb_io_write(__VA_ARGS__)
+int linuxkpi_fb_deferred_io_mmap(struct linux_fb_info *info,
     struct vm_area_struct *vma);
+#define	fb_deferred_io_mmap(...) linuxkpi_fb_deferred_io_mmap(__VA_ARGS__)
 
-static inline void
-sys_fillrect(struct linux_fb_info *info, const struct fb_fillrect *rect)
-{
-	cfb_fillrect(info, rect);
-}
-
-static inline void
-sys_copyarea(struct linux_fb_info *info, const struct fb_copyarea *area)
-{
-	cfb_copyarea(info, area);
-}
-
-static inline void
-sys_imageblit(struct linux_fb_info *info, const struct fb_image *image)
-{
-	cfb_imageblit(info, image);
-}
-
-static inline ssize_t
-fb_sys_read(struct linux_fb_info *info, char __user *buf, size_t count,
-    loff_t *ppos)
-{
-	return (fb_io_read(info, buf, count, ppos));
-}
-
-static inline ssize_t
-fb_sys_write(struct linux_fb_info *info, const char __user *buf, size_t count,
-    loff_t *ppos)
-{
-	return (fb_io_write(info, buf, count, ppos));
-}
-
-int linux_register_framebuffer(struct linux_fb_info *fb_info);
-int linux_unregister_framebuffer(struct linux_fb_info *fb_info);
-int remove_conflicting_framebuffers(resource_size_t base, resource_size_t size,
-	const char *name, bool primary);
-int remove_conflicting_pci_framebuffers(struct pci_dev *pdev, const char *name);
-struct linux_fb_info *framebuffer_alloc(size_t size, struct device *dev);
-void framebuffer_release(struct linux_fb_info *info);
+int linuxkpi_register_framebuffer(struct linux_fb_info *fb_info);
+#define	register_framebuffer(...)	\
+    linuxkpi_register_framebuffer(__VA_ARGS__)
+int linuxkpi_unregister_framebuffer(struct linux_fb_info *fb_info);
+#define	unregister_framebuffer(...)	\
+    linuxkpi_unregister_framebuffer(__VA_ARGS__)
+int linuxkpi_remove_conflicting_framebuffers(resource_size_t base,
+    resource_size_t size, const char *name, bool primary);
+#define	remove_conflicting_framebuffers(...)	\
+    linuxkpi_remove_conflicting_framebuffers(__VA_ARGS__)
+int linuxkpi_remove_conflicting_pci_framebuffers(struct pci_dev *pdev,
+    const char *name);
+#define	remove_conflicting_pci_framebuffers(...)	\
+    linuxkpi_remove_conflicting_pci_framebuffers(__VA_ARGS__)
+struct linux_fb_info *linuxkpi_framebuffer_alloc(size_t size, struct device *dev);
+#define	framebuffer_alloc(...)	linuxkpi_framebuffer_alloc(__VA_ARGS__)
+void linuxkpi_framebuffer_release(struct linux_fb_info *info);
+#define	framebuffer_release(...)	\
+    linuxkpi_framebuffer_release(__VA_ARGS__)
 
 static inline void
 fb_set_suspend(struct linux_fb_info *info, int state)
@@ -406,7 +400,7 @@ fb_set_suspend(struct linux_fb_info *info, int state)
 }
 
 /* updated FreeBSD fb_info */
-int linux_fb_get_options(const char *name, char **option);
-#define	fb_get_options	linux_fb_get_options
+int linuxkpi_fb_get_options(const char *name, char **option);
+#define	fb_get_options(...)	linuxkpi_fb_get_options(__VA_ARGS__)
 
 #endif
