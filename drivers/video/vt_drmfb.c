@@ -31,6 +31,9 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/module.h>
 #include <sys/reboot.h>
 #include <sys/fbio.h>
 #include <dev/vt/vt.h>
@@ -38,6 +41,8 @@
 #include <dev/vt/colors/vt_termcolors.h>
 
 #include <linux/fb.h>
+
+#include "fb_if.h"
 
 /*
  * `drm_fb_helper.h` redefines `fb_info` to be `linux_fb_info` to manage the
@@ -48,8 +53,6 @@
  * We need to undo this here because we use both structures.
  */
 #undef	fb_info
-
-#include "vt_drmfb.h"
 
 #define	to_linux_fb_info(f)	container_of(f, struct linux_fb_info, fbio);
 
@@ -387,22 +390,59 @@ vt_drmfb_fini(struct vt_device *vd, void *softc)
 	vd->vd_video_dev = NULL;
 }
 
-int
-vt_drmfb_attach(struct fb_info *fbio)
+/* Newbus methods. */
+static int
+vt_drmfb_probe(device_t dev)
 {
-	int ret;
+	char *disabled;
 
-	ret = vt_allocate(&vt_drmfb_driver, fbio);
+	disabled = kern_getenv("kern.vt.disable_drmfb");
+	if (disabled != NULL && strtoul(disabled, NULL, 10) != 0)
+		return (ENXIO);
 
-	return (ret);
+	return (BUS_PROBE_GENERIC);
 }
 
-int
-vt_drmfb_detach(struct fb_info *fbio)
+static int
+vt_drmfb_attach(device_t dev)
 {
-	int ret;
+	struct fb_info *fbio;
 
-	ret = vt_deallocate(&vt_drmfb_driver, fbio);
+	fbio = FB_GETINFO(device_get_parent(dev));
+	if (fbio == NULL)
+		return (ENXIO);
 
-	return (ret);
+	return (vt_allocate(&vt_drmfb_driver, fbio));
 }
+
+static int
+vt_drmfb_detach(device_t dev)
+{
+	struct fb_info *fbio;
+
+	fbio = FB_GETINFO(device_get_parent(dev));
+	if (fbio == NULL)
+		return (ENXIO);
+
+	return (vt_deallocate(&vt_drmfb_driver, fbio));
+}
+
+
+static device_method_t vt_drmfb_methods[] = {
+	/* Device interface */
+	DEVMETHOD(device_probe,		vt_drmfb_probe),
+	DEVMETHOD(device_attach,	vt_drmfb_attach),
+	DEVMETHOD(device_detach,	vt_drmfb_detach),
+	DEVMETHOD(device_shutdown,      bus_generic_shutdown),
+
+	DEVMETHOD_END
+};
+
+driver_t vt_drmfb_bus_driver = {
+	"fbd",
+	vt_drmfb_methods,
+	0
+};
+
+DRIVER_MODULE(vt_drmfb, drmn, vt_drmfb_bus_driver, NULL, NULL);
+MODULE_VERSION(vt_drmfb, 1);

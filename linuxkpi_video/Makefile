@@ -24,6 +24,7 @@ SRCS+=	cmdline.c
 
 SRCS+=	bus_if.h \
 	device_if.h \
+	fb_if.h \
 	pci_if.h \
 	vnode_if.h \
 	opt_splash.h \

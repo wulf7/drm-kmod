@@ -34,7 +34,6 @@
 #include <sys/fbio.h>
 
 #include <dev/vt/vt.h>
-#include "vt_drmfb.h"
 
 #include <vm/vm.h>
 #include <vm/vm_phys.h>
@@ -169,6 +168,8 @@ __register_framebuffer(struct linux_fb_info *fb_info)
 {
 	int err;
 
+	bus_topo_assert();
+
 	vt_freeze_main_vd(fb_info->aperture_base, fb_info->aperture_size);
 
 	if (fb_info->aperture_base != 0 && fb_info->aperture_size != 0) {
@@ -197,9 +198,6 @@ __register_framebuffer(struct linux_fb_info *fb_info)
 	fb_info->fbio.fb_size = fb_info->fix.smem_len;
 	fb_info->fbio.fb_vbase = (uintptr_t)fb_info->screen_base;
 
-	fb_info->fbio.fb_fbd_dev = device_add_child(fb_info->fb_bsddev, "fbd",
-				device_get_unit(fb_info->fb_bsddev));
-
 	/* tell vt_drmfb to initialize color map */
 	fb_info->fbio.fb_cmsize = 0;
 	if (fb_info->fbio.fb_bpp == 0) {
@@ -207,24 +205,20 @@ __register_framebuffer(struct linux_fb_info *fb_info)
 		    "fb_bpp not set, setting to 8\n");
 		fb_info->fbio.fb_bpp = 32;
 	}
-	if ((err = vt_drmfb_attach(&fb_info->fbio)) != 0) {
-		switch (err) {
-		case EEXIST:
-			device_printf(fb_info->fbio.fb_fbd_dev,
-			    "not attached to vt(4) console; "
-			    "another device has precedence (err=%d)\n",
-			    err);
-			err = 0;
-			break;
-		default:
-			device_printf(fb_info->fbio.fb_fbd_dev,
-			    "failed to attach to vt(4) console (err=%d)\n",
-			    err);
-		}
+
+	fb_info->fbio.fb_fbd_dev = device_add_child(fb_info->fb_bsddev, "fbd",
+	    device_get_unit(fb_info->fb_bsddev));
+	if (fb_info->fbio.fb_fbd_dev == NULL)
+		return (-ENODEV);
+	device_set_ivars(fb_info->fbio.fb_fbd_dev, &fb_info->fbio);
+	if ((err = device_probe_and_attach(fb_info->fbio.fb_fbd_dev)) != 0) {
+		device_printf(fb_info->fbio.fb_fbd_dev,
+		    "failed to attach to vt(4) console (err=%d)\n", err);
 		return (-err);
 	}
 	fb_info_print(fb_info);
-	return 0;
+
+	return (0);
 }
 
 int
@@ -241,12 +235,10 @@ linuxkpi_register_framebuffer(struct linux_fb_info *fb_info)
 static int
 __unregister_framebuffer(struct linux_fb_info *fb_info)
 {
-	vt_drmfb_detach(&fb_info->fbio);
-
 	if (fb_info->fbio.fb_fbd_dev) {
-		mtx_lock(&Giant);
+		bus_topo_lock();
 		device_delete_child(fb_info->fb_bsddev, fb_info->fbio.fb_fbd_dev);
-		mtx_unlock(&Giant);
+		bus_topo_unlock();
 		fb_info->fbio.fb_fbd_dev = NULL;
 	}
 
