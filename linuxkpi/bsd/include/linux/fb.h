@@ -388,6 +388,11 @@ fb_set_suspend(struct linux_fb_info *info, int state)
 {
 }
 
+static inline void
+fb_deferred_io_cleanup(struct linux_fb_info *info)
+{
+}
+
 /* updated FreeBSD fb_info */
 int linuxkpi_fb_get_options(const char *name, char **option);
 #define	fb_get_options(...)	linuxkpi_fb_get_options(__VA_ARGS__)
