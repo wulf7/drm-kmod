@@ -204,7 +204,6 @@ struct fb_image {
 	struct fb_cmap cmap;
 #ifdef __FreeBSD__
 	const char *mask;
-	uint32_t vt_width;
 #endif
 };
 

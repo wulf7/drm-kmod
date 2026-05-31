@@ -436,7 +436,7 @@ linuxkpi_cfb_imageblit(struct linux_fb_info *info,
 
 	x = image->dx;
 	y = image->dy;
-	width = image->vt_width == 0 ? image->width : image->vt_width;
+	width = image->width;
 	height = image->height;
 
 	if (x + width > info->var.xres) {

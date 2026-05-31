@@ -170,7 +170,6 @@ vt_drmfb_bitblt_bitmap(struct vt_device *vd, const struct vt_window *vw,
 	struct fb_info *fbio;
 	struct linux_fb_info *info;
 	struct fb_image image;
-	uint32_t vt_width;
 
 	fbio = vd->vd_softc;
 	info = to_linux_fb_info(fbio);
@@ -178,17 +177,10 @@ vt_drmfb_bitblt_bitmap(struct vt_device *vd, const struct vt_window *vw,
 		return;
 
 	/* Bound by right and bottom edges. */
-	if (y + height > vw->vw_draw_area.tr_end.tp_row) {
-		if (y >= vw->vw_draw_area.tr_end.tp_row)
-			return;
-		height = vw->vw_draw_area.tr_end.tp_row - y;
-	}
-	vt_width = width;
-	if (x + width > vw->vw_draw_area.tr_end.tp_col) {
-		if (x >= vw->vw_draw_area.tr_end.tp_col)
-			return;
-		vt_width = vw->vw_draw_area.tr_end.tp_col - x;
-	}
+	if (y >= vw->vw_draw_area.tr_end.tp_row)
+		return;
+	if (x >= vw->vw_draw_area.tr_end.tp_col)
+		return;
 
 	image.dx = x;
 	image.dy = y;
@@ -199,7 +191,6 @@ vt_drmfb_bitblt_bitmap(struct vt_device *vd, const struct vt_window *vw,
 	image.depth = 1;
 	image.data = pattern;
 	image.mask = mask; // Specific to FreeBSD to display the mouse pointer.
-	image.vt_width = vt_width; // FreeBSD. Stores truncated width.
 
 	if (!kdb_active && !KERNEL_PANICKED())
 		linux_set_current(curthread);
@@ -216,7 +207,6 @@ vt_drmfb_bitblt_argb(struct vt_device *vd, const struct vt_window *vw,
 	struct fb_info *fbio;
 	struct linux_fb_info *info;
 	struct fb_image image;
-	uint32_t vt_width;
 
 	fbio = vd->vd_softc;
 	info = to_linux_fb_info(fbio);
@@ -224,17 +214,10 @@ vt_drmfb_bitblt_argb(struct vt_device *vd, const struct vt_window *vw,
 		return (ENOTSUP);
 
 	/* Bound by right and bottom edges. */
-	if (y + height > vw->vw_draw_area.tr_end.tp_row) {
-		if (y >= vw->vw_draw_area.tr_end.tp_row)
-			return (EINVAL);
-		height = vw->vw_draw_area.tr_end.tp_row - y;
-	}
-	vt_width = width;
-	if (x + width > vw->vw_draw_area.tr_end.tp_col) {
-		if (x >= vw->vw_draw_area.tr_end.tp_col)
-			return (EINVAL);
-		vt_width = vw->vw_draw_area.tr_end.tp_col - x;
-	}
+	if (y >= vw->vw_draw_area.tr_end.tp_row)
+		return (EINVAL);
+	if (x >= vw->vw_draw_area.tr_end.tp_col)
+		return (EINVAL);
 
 	image.dx = x;
 	image.dy = y;
@@ -242,7 +225,6 @@ vt_drmfb_bitblt_argb(struct vt_device *vd, const struct vt_window *vw,
 	image.height = height;
 	image.depth = 32;
 	image.data = argb;
-	image.vt_width = vt_width; // FreeBSD. Stores truncated width.
 
 	info->fbops->fb_imageblit(info, &image);
 
