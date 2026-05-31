@@ -187,7 +187,6 @@ aperture_remove_conflicting_devices(resource_size_t base,
 	return (0);
 }
 
-#define	PCI_STD_NUM_BARS	6
 int
 aperture_remove_conflicting_pci_devices(struct pci_dev *pdev,
     const char *name)
