@@ -56,8 +56,6 @@
 
 #define	to_linux_fb_info(f)	container_of(f, struct linux_fb_info, fbio);
 
-static vd_init_t		vt_drmfb_init;
-static vd_fini_t		vt_drmfb_fini;
 static vd_blank_t		vt_drmfb_blank;
 static vd_bitblt_bmp_t		vt_drmfb_bitblt_bitmap;
 static vd_bitblt_argb_t		vt_drmfb_bitblt_argb;
@@ -67,8 +65,6 @@ static vd_invalidate_text_t	vt_drmfb_invalidate_text;
 
 static struct vt_driver vt_drmfb_driver = {
 	.vd_name = "drmfb",
-	.vd_init = vt_drmfb_init,
-	.vd_fini = vt_drmfb_fini,
 	.vd_blank = vt_drmfb_blank,
 	/*
 	 * .vd_bitblt_text is unset.
@@ -91,6 +87,8 @@ static struct vt_driver vt_drmfb_driver = {
 	.vd_resume = vt_resume,
 
 	/* Use vt_fb implementation */
+	.vd_init = vt_fb_init,
+	.vd_fini = vt_fb_fini,
 	.vd_postswitch = vt_fb_postswitch,
 	.vd_fb_ioctl = vt_fb_ioctl,
 	.vd_fb_mmap = vt_fb_mmap,
@@ -254,78 +252,6 @@ vt_drmfb_invalidate_text(struct vt_device *vd, const term_rect_t *area)
 				vd->vd_pos_to_flush[z] = true;
 		}
 	}
-}
-
-static int
-vt_drmfb_init_colors(struct fb_info *info)
-{
-
-	switch (FBTYPE_GET_BPP(info)) {
-	case 8:
-		return (vt_config_cons_colors(info, COLOR_FORMAT_RGB,
-		    0x7, 5, 0x7, 2, 0x3, 0));
-	case 15:
-		return (vt_config_cons_colors(info, COLOR_FORMAT_RGB,
-		    0x1f, 10, 0x1f, 5, 0x1f, 0));
-	case 16:
-		return (vt_config_cons_colors(info, COLOR_FORMAT_RGB,
-		    0x1f, 11, 0x3f, 5, 0x1f, 0));
-	case 24:
-	case 32: /* Ignore alpha. */
-		return (vt_config_cons_colors(info, COLOR_FORMAT_RGB,
-		    0xff, 16, 0xff, 8, 0xff, 0));
-	default:
-		return (1);
-	}
-}
-
-static int
-vt_drmfb_init(struct vt_device *vd)
-{
-	struct fb_info *fbio;
-	u_int margin;
-	int bg, err;
-	term_color_t c;
-
-	fbio = vd->vd_softc;
-	vd->vd_height = MIN(VT_FB_MAX_HEIGHT, fbio->fb_height);
-	margin = (fbio->fb_height - vd->vd_height) >> 1;
-	vd->vd_transpose = margin * fbio->fb_stride;
-	vd->vd_width = MIN(VT_FB_MAX_WIDTH, fbio->fb_width);
-	margin = (fbio->fb_width - vd->vd_width) >> 1;
-	vd->vd_transpose += margin * (fbio->fb_bpp / NBBY);
-	vd->vd_video_dev = fbio->fb_video_dev;
-
-	if (fbio->fb_size == 0)
-		return (CN_DEAD);
-
-	if (fbio->fb_pbase == 0 && fbio->fb_vbase == 0)
-		fbio->fb_flags |= FB_FLAG_NOMMAP;
-
-	if (fbio->fb_cmsize <= 0) {
-		err = vt_drmfb_init_colors(fbio);
-		if (err)
-			return (CN_DEAD);
-		fbio->fb_cmsize = 16;
-	}
-
-	c = TC_BLACK;
-	if (TUNABLE_INT_FETCH("teken.bg_color", &bg) != 0) {
-		if (bg == TC_WHITE)
-			bg |= TC_LIGHT;
-		c = bg;
-	}
-
-	/* Clear the screen. */
-	vd->vd_driver->vd_blank(vd, c);
-
-	return (CN_INTERNAL);
-}
-
-static void
-vt_drmfb_fini(struct vt_device *vd, void *softc)
-{
-	vd->vd_video_dev = NULL;
 }
 
 /* Newbus methods. */
