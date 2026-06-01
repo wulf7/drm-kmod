@@ -251,7 +251,7 @@ __register_framebuffer(struct linux_fb_info *fb_info)
 	}
 
 	fb_info->fbio.fb_fbd_dev = device_add_child(fb_info->fb_bsddev, "fbd",
-	    device_get_unit(fb_info->fb_bsddev));
+	    DEVICE_UNIT_ANY);
 	if (fb_info->fbio.fb_fbd_dev == NULL)
 		return (-ENODEV);
 	device_set_ivars(fb_info->fbio.fb_fbd_dev, &fb_info->fbio);
