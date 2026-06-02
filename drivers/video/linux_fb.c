@@ -25,14 +25,13 @@
  */
 
 #include <sys/param.h>
-#include <sys/types.h>
 #include <sys/kernel.h>
+#include <sys/fbio.h>
 #include <sys/lock.h>
 #include <sys/malloc.h>
 #include <sys/reboot.h>
 #include <sys/systm.h>
 #include <sys/sx.h>
-#include <sys/fbio.h>
 
 #include <dev/vt/vt.h>
 

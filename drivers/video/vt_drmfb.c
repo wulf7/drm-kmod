@@ -33,9 +33,10 @@
 
 #include <sys/param.h>
 #include <sys/systm.h>
+#include <sys/fbio.h>
 #include <sys/module.h>
 #include <sys/reboot.h>
-#include <sys/fbio.h>
+
 #include <dev/vt/vt.h>
 #include <dev/vt/hw/fb/vt_fb.h>
 #include <dev/vt/colors/vt_termcolors.h>
