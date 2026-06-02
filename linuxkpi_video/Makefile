@@ -9,17 +9,17 @@ KMOD=	linuxkpi_video
 
 EXPORT_SYMS=    YES
 
-SRCS=	hdmi.c \
+SRCS=	linux_hdmi.c \
 	linux_fb.c \
 	video_kmod.c \
 	vt_drmfb.c
 
 .if !empty(KCONFIG:MAPERTURE_HELPERS)
-SRCS+= aperture.c
+SRCS+=	linux_aperture.c
 .endif
 
 .if !empty(KCONFIG:MVIDEO_CMDLINE)
-SRCS+=	cmdline.c
+SRCS+=	linux_cmdline.c
 .endif
 
 SRCS+=	bus_if.h \
@@ -49,4 +49,4 @@ CFLAGS+= '-DKBUILD_MODNAME="${KMOD}"'
 CFLAGS+= '-DLINUXKPI_PARAM_PREFIX=ttm_' -DDRM_SYSCTL_PARAM_PREFIX=_${KMOD}
 CFLAGS+= ${KCONFIG:C/(.*)/-DCONFIG_\1/}
 
-CWARNFLAGS.hdmi.c=	-Wno-cast-qual
+CWARNFLAGS.linux_hdmi.c=	-Wno-cast-qual
